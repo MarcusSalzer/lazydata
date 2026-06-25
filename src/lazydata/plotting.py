@@ -14,28 +14,18 @@ def set_plotly_template(
     margin=40,
 ):
     """Some kind of plot template"""
-    plot_temp = pio.templates[base_template]
-    plot_temp.layout.margin = dict.fromkeys(["t", "l", "r", "b"], margin)
+    lay = pio.templates[base_template].layout
+    assert isinstance(lay, go.Layout)
+    lay.margin = dict.fromkeys(["t", "l", "r", "b"], margin)
 
     if not auto_size:
-        plot_temp.layout.width = w
-        plot_temp.layout.height = h
-        plot_temp.layout.autosize = False
+        lay.width = w
+        lay.height = h
+        lay.autosize = False
     if transparent_background:
-        plot_temp.layout.paper_bgcolor = "rgba(0,0,0,0)"
-        plot_temp.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    pio.templates.default = plot_temp
-
-
-def plot_feature_pair(x_data, y_data, x=0, y=1, discrete=True):
-    raise NotImplementedError
-    if discrete:
-        labels = y_data.astype(str)
-    else:
-        labels = y_data
-
-    fig = go.Figure()
-    return fig
+        lay.paper_bgcolor = "rgba(0,0,0,0)"
+        lay.plot_bgcolor = "rgba(0,0,0,0)"
+    pio.templates.default = 
 
 
 def heatmap(

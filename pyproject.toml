@@ -1,0 +1,19 @@
+[project]
+name = "lazydata"
+version = "0.1.0"
+description = "Im too lazy."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.5.0",
+    "plotly>=6.8.0",
+    "polars>=1.42.0",
+    "rich>=15.0.0",
+]
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+cml = ["clearml>=2.1.9"]
+dev = ["pytest>=9.1.1"]

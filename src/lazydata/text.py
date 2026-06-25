@@ -11,7 +11,7 @@ def normalize_names(
     """Normalize a list of feature names"""
     result = []
     for n in names:
-        words = re.split("[ \|,\._-]", n.lower().strip())
+        words = re.split(r"[ \|,\._-]", n.lower().strip())
 
         if wordlength is not None:
             words = [w[:wordlength] for w in words]
