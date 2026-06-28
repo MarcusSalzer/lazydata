@@ -1,8 +1,8 @@
 """Convenience wrappers for clearML."""
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, Literal
 
@@ -10,9 +10,73 @@ import numpy as np
 from clearml import Dataset, InputModel, Model, Task, TaskTypes
 from numpy.typing import NDArray
 from plotly import graph_objects as go
+from polars import DataFrame
 from rich import get_console
 
 from .fs import path_collapse_user, sha256_path
+
+MetricKey = tuple[str, str, Literal["min", "max", "last"] | str]
+
+
+def try_parse(v):
+    try:
+        return int(v)
+    except ValueError:
+        try:
+            return float(v)
+        except ValueError:
+            return v
+
+
+def ablation_results(
+    project_name: str | None,
+    tags: list[str],
+    hparam_keys: list[tuple[str, str]],
+    metric_keys: list[MetricKey],
+    singles_keys: list[str] | None = None,
+    *,
+    allow_archived=False,
+    include_name: bool = False,
+) -> DataFrame:
+    tasks = Task.get_tasks(
+        project_name=project_name, tags=tags, allow_archived=allow_archived
+    )
+
+    rows = []
+    for task in tasks:
+        assert isinstance(task, Task)
+        params = task.get_parameters()
+
+        assert params is not None
+        scalars = task.get_last_scalar_metrics()  # {title: {series: {last, min, max}}}
+
+        row: dict[str, str | float | None] = {}
+        if include_name:
+            row["name"] = task.name
+
+        for group, key in hparam_keys:
+            k = f"{group}/{key}"
+            if k not in params:
+                print(f"Warning: {k} not in params: {sorted(params.keys())}")
+            row[k] = try_parse(params.get(k))
+
+        for title, series, variant in metric_keys:
+            if title not in scalars:
+                print(f"Warning: {title=} not in scalars: {sorted(scalars.keys())}")
+
+            v = scalars.get(title, {}).get(series, {}).get(variant)
+            row[f"{title}/{series}"] = v
+
+        if singles_keys:
+            singles = task.get_reported_single_values()
+            for k in singles_keys:
+                if k not in singles:
+                    print(f"Warning: {k} not in singles: {sorted(singles.keys())}")
+                row[f"Summary/{k}"] = singles.get(k)
+
+        rows.append(row)
+
+    return DataFrame(rows)
 
 
 def connect_or_print(
@@ -259,7 +323,11 @@ class CmlCache:
     """Allows quickly retrieving local results without querying ClearML server."""
 
     def __init__(
-        self, project_name: str, storage_root: str | Path = "./tmp/cml_cache"
+        self,
+        project_name: str,
+        storage_root: str | Path = "./tmp/cml_cache",
+        write: bool = True,
+        read: bool = True,
     ) -> None:
 
         # TODO load dataset cache

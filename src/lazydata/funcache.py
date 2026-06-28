@@ -1,8 +1,5 @@
 """Code aware cache decorator."""
 
-from pathlib import Path
-from typing import Literal
-
 import ast
 import hashlib
 import inspect
@@ -11,7 +8,8 @@ import pickle
 import textwrap
 from dataclasses import asdict, is_dataclass
 from functools import wraps
-from typing import Any, SupportsBytes
+from pathlib import Path
+from typing import Any, Literal, SupportsBytes
 
 
 def hash_value(value: Any) -> str:
@@ -111,8 +109,12 @@ class FunCache:
         self,
         ext: Literal["json", "pkl"] = "json",
         cache_dir: str | Path = "./tmp/funcache",
+        write: bool = True,
+        read: bool = True,
     ) -> None:
 
+        self.write = write
+        self.read = read
         # How do we store the data (and how flexible function outputs do we allow)?
         self.ext = ext
         # Where do we store the data.
@@ -129,32 +131,33 @@ class FunCache:
         for f in self.cache_dir.glob(f"{prefix}*.{self.ext}"):
             f.unlink()
 
+    def _store(self, key: str, result: Any):
 
-    def _store(self,key:str,result:Any):
+        if not self.write:
+            return  # skip if not writing
+
         cache_file = self.cache_dir / f"{key}.{self.ext}"
 
-        if self.ext =="pkl":
+        if self.ext == "pkl":
             with cache_file.open("wb") as f:
                 pickle.dump(result, f)
-        elif self.ext =="json":
+        elif self.ext == "json":
             with cache_file.open("w") as f:
                 json.dump(result, f)
         else:
             raise ValueError("Nope")
-            
 
-    def _load(self,cache_file:Path):
-        
+    def _load(self, cache_file: Path):
 
-        if self.ext =="pkl":
+        if self.ext == "pkl":
             with cache_file.open("rb") as f:
                 return pickle.load(f)
-        elif self.ext =="json":
+        elif self.ext == "json":
             with cache_file.open("r") as f:
-                return json.load( f)
+                return json.load(f)
         else:
             raise ValueError("Nope")
-            
+
     def cached[**P, R](
         self,
         key_override: str | object | None = None,
@@ -182,13 +185,13 @@ class FunCache:
                     key += hash_value(key_extra)
 
                 # a little more human readable
-                key=f"{fn.__qualname__}-{key}"
+                key = f"{fn.__qualname__}-{key}"
 
                 cache_file = self.cache_dir / f"{key}.{self.ext}"
                 cache_file.parent.mkdir(parents=True, exist_ok=True)
 
                 desc = f"{fn.__qualname__} ({key[:8]}...)"
-                if cache_file.exists():
+                if self.read and cache_file.exists():
                     if verbose:
                         print(f"[cache hit]  {desc}")
                     return self._load(cache_file)
@@ -197,7 +200,7 @@ class FunCache:
 
                 result = fn(*args, **kwargs)
 
-                self._store(key,result)
+                self._store(key, result)
 
                 return result
 
