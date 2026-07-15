@@ -1,5 +1,4 @@
-"""
-TableFormatter — turn a Polars dataframe into publication-ready tables.
+"""TableFormatter — turn a Polars dataframe into publication-ready tables.
 
 Supports:
   - Bold "best value" per column (higher-is-better or lower-is-better)
@@ -38,8 +37,7 @@ _BOLD = {
 
 
 class TableFormatter:
-    """
-    Chainable formatter that wraps a Polars DataFrame and produces
+    """Chainable formatter that wraps a Polars DataFrame and produces
     Markdown / LaTeX / HTML table strings.
 
     Parameters
@@ -48,6 +46,7 @@ class TableFormatter:
         Source dataframe
     default_decimals: int
         Default number of decimals for float-values.
+
     """
 
     def __init__(self, df: pl.DataFrame, default_decimals: int = 3) -> None:
@@ -63,16 +62,15 @@ class TableFormatter:
     # Configuration helpers (chainable)
     # ---------------------------------
 
-    def percent(self, *cols: str) -> "TableFormatter":
+    def percent(self, *cols: str) -> TableFormatter:
         """Mark columns to render as percentages (value * 100 + '%')."""
         self._percent_cols.update(cols)
         return self
 
     def decimals(
-        self, _default: int | None = None, **col_decimals: int
-    ) -> "TableFormatter":
-        """
-        Set decimal precision per column.  Pass keyword args as
+        self, _default: int | None = None, **col_decimals: int,
+    ) -> TableFormatter:
+        """Set decimal precision per column.  Pass keyword args as
             fmt.decimals(lr=6, loss=4, accuracy=3)
         or set a default for all unspecified numeric columns:
             fmt.decimals(3, lr=6)
@@ -88,25 +86,25 @@ class TableFormatter:
         self,
         *cols: str,
         mode: Literal["high", "low"] = "high",
-    ) -> "TableFormatter":
-        """
-        Mark columns whose best value should be bolded.
+    ) -> TableFormatter:
+        """Mark columns whose best value should be bolded.
 
         Parameters
         ----------
         *cols : column names
         mode  : "high" (larger = better) or "low" (smaller = better)
+
         """
         for col in cols:
             self._best[col] = mode
         return self
 
-    def rename(self, **mapping: str) -> "TableFormatter":
+    def rename(self, **mapping: str) -> TableFormatter:
         """Rename columns in the output header only."""
         self._rename.update(mapping)
         return self
 
-    def columns(self, *cols: str) -> "TableFormatter":
+    def columns(self, *cols: str) -> TableFormatter:
         """Restrict and/or reorder output columns."""
         self._col_order = list(cols)
         return self

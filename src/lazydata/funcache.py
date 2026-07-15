@@ -18,25 +18,24 @@ def hash_value(value: Any) -> str:
         # include the class name
         payload = {"__type__": type(value).__qualname__, **asdict(value)}
         return hashlib.md5(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    # recursive for iterables
+    if isinstance(value, (list, tuple)):
+        inner = [hash_value(v) for v in value]
+    elif isinstance(value, dict):
+        inner = {k: hash_value(v) for k, v in value.items()}
+    elif isinstance(value, set):
+        inner = [hash_value(v) for v in sorted(value)]
+    elif isinstance(value, (str, bool, float, int)):
+        inner = repr(value)
+    elif value is None:
+        inner = "None"
+    elif isinstance(value, SupportsBytes):
+        inner = bytes(value)
+    elif hasattr(value, "__dict__"):
+        inner = {"type": type(value).__name__, "vars": vars(value)}
     else:
-        # recursive for iterables
-        if isinstance(value, (list, tuple)):
-            inner = [hash_value(v) for v in value]
-        elif isinstance(value, dict):
-            inner = {k: hash_value(v) for k, v in value.items()}
-        elif isinstance(value, set):
-            inner = [hash_value(v) for v in sorted(value)]
-        elif isinstance(value, (str, bool, float, int)):
-            inner = repr(value)
-        elif value is None:
-            inner = "None"
-        elif isinstance(value, SupportsBytes):
-            inner = bytes(value)
-        elif hasattr(value, "__dict__"):
-            inner = {"type": type(value).__name__, "vars": vars(value)}
-        else:
-            inner = str(value)  # Fallback
-        return hashlib.md5(json.dumps(inner).encode()).hexdigest()
+        inner = str(value)  # Fallback
+    return hashlib.md5(json.dumps(inner).encode()).hexdigest()
 
     raise TypeError(f"cannot reliably hash {type(value)}")
 
@@ -127,11 +126,11 @@ class FunCache:
             return 0
         return sum(p.stat().st_size for p in Path(cache_dir).iterdir())
 
-    def clear(self, prefix: str):
+    def clear(self, prefix: str) -> None:
         for f in self.cache_dir.glob(f"{prefix}*.{self.ext}"):
             f.unlink()
 
-    def _store(self, key: str, result: Any):
+    def _store(self, key: str, result: Any) -> None:
 
         if not self.write:
             return  # skip if not writing

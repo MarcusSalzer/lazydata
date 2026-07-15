@@ -1,6 +1,7 @@
 """Tabular data analysis"""
 
 from typing import Literal
+
 import polars as pl
 
 

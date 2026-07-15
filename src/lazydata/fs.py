@@ -36,7 +36,7 @@ def tmp_path(ext: str):
 
 
 def stem(p: Path | str):
-    """lazy way to get the stem of a path (str)"""
+    """Lazy way to get the stem of a path (str)"""
     return Path(p).stem
 
 
@@ -51,7 +51,6 @@ def sha256_file(path: Path, chunksize: int = 1 << 20) -> str:
 
 def sha256_path(path: Path) -> str:
     """Deterministic checksum of a directory: hash of sorted per-file checksums."""
-
     if path.is_file():
         return sha256_file(path)
 

@@ -3,7 +3,7 @@ import polars as pl
 from lazydata.tableformatter import TableFormatter
 
 
-def test_basic_md():
+def test_basic_md() -> None:
 
     df = pl.DataFrame({"x": [1, 2, 3], "y": [1.0, 1.1, None], "name": ["a", "b", "c"]})
     fmt = TableFormatter(df)

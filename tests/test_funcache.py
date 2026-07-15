@@ -1,10 +1,12 @@
 from pathlib import Path
 
-from lazydata.funcache import FunCache
 import pytest
 
+from lazydata.funcache import FunCache
+
+
 @pytest.mark.parametrize("mode",["json","pkl"])
-def test_simple_pkl(tmp_path: Path,mode):
+def test_simple_pkl(tmp_path: Path,mode) -> None:
 
     cache = FunCache(mode, tmp_path)
 

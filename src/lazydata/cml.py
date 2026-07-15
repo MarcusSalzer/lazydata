@@ -39,7 +39,7 @@ def ablation_results(
     include_name: bool = False,
 ) -> DataFrame:
     tasks = Task.get_tasks(
-        project_name=project_name, tags=tags, allow_archived=allow_archived
+        project_name=project_name, tags=tags, allow_archived=allow_archived,
     )
 
     rows = []
@@ -80,8 +80,8 @@ def ablation_results(
 
 
 def connect_or_print(
-    task: Task | None, tags: list[str] | None, hparams: dict[str, dict[str, Any]]
-):
+    task: Task | None, tags: list[str] | None, hparams: dict[str, dict[str, Any]],
+) -> None:
     """Add hyperparameters or print them."""
     if task:
         if tags:
@@ -156,14 +156,14 @@ class TaskWrapper:
         title: str,
         series: str,
         iteration: int,
-    ):
+    ) -> None:
         fp = self.store_dir / f"{variant}/{title}/{series}/{iteration}{file.suffix}"
         fp.parent.mkdir(exist_ok=True, parents=True)
         file.rename(fp)
         if self.verbose:
             print(f"[Moved {variant}] -> {fp}")
 
-    def connect_multi(self, tags: list[str] | None, hparams: dict[str, dict[str, Any]]):
+    def connect_multi(self, tags: list[str] | None, hparams: dict[str, dict[str, Any]]) -> None:
         connect_or_print(self.task, tags, hparams)
 
     def connect(self, obj: dict[str, Any], name: str) -> None:
@@ -193,7 +193,7 @@ class TaskWrapper:
         model_path: Path | str,
         name: str | None = None,
         iteration: int | None = None,
-    ):
+    ) -> None:
 
         if self.task:
             self.task.update_output_model(str(model_path), name, iteration=iteration)
@@ -207,18 +207,18 @@ class TaskWrapper:
             print("No CML task!")
 
     def report_scalar(
-        self, title: str, series: str, value: float, iteration: int
+        self, title: str, series: str, value: float, iteration: int,
     ) -> None:
-        """report or print a scalar"""
+        """Report or print a scalar"""
         if self.task:
             self.task.logger.report_scalar(title, series, value, iteration)
         else:
             print(f"[report scalar] {title}/{series} ({iteration=}) -> {value=:.4f}")
 
     def report_min_mean_max(
-        self, title: str, values: NDArray[Any], iteration: int
+        self, title: str, values: NDArray[Any], iteration: int,
     ) -> None:
-        """report or print stats."""
+        """Report or print stats."""
         if self.task:
             lgr = self.task.logger
             lgr.report_scalar(title, "mean", values.mean(), iteration)
@@ -228,7 +228,7 @@ class TaskWrapper:
         else:
             print(
                 f"[report] {title} ({iteration=}) -> "
-                + f" {values.min()=:.4f} {values.mean()=:.4f} {values.max()=:.4f}"
+                 f" {values.min()=:.4f} {values.mean()=:.4f} {values.max()=:.4f}",
             )
 
     def report_percentiles(
@@ -239,8 +239,7 @@ class TaskWrapper:
         percentiles: tuple[int, ...] = (5, 50, 95),
         series_prefix: str = "",
     ) -> None:
-        """report or print stats."""
-
+        """Report or print stats."""
         if series_prefix:
             series_prefix += "-"
 
@@ -256,10 +255,10 @@ class TaskWrapper:
 
             else:
                 print(
-                    f"[report] {title} {series_prefix}p{p:02d} ({iteration=}) -> {value:.4f}"
+                    f"[report] {title} {series_prefix}p{p:02d} ({iteration=}) -> {value:.4f}",
                 )
 
-    def plotly(self, title: str, series: str, fig: go.Figure, iteration: int):
+    def plotly(self, title: str, series: str, fig: go.Figure, iteration: int) -> None:
 
         # save temporary plot
         p = self.store_dir / "tmp" / "plot.png"
@@ -272,16 +271,15 @@ class TaskWrapper:
             # log as a native plotly-plot
             self.task.get_logger().report_plotly(title, series, fig, iteration)
 
-    def media(self, file: Path, title: str, series: str, iteration: int):
+    def media(self, file: Path, title: str, series: str, iteration: int) -> None:
         """Image/video/etc."""
-
         # local
         self._save("media", file, title, series, iteration)
 
         # upload
         if self.task is not None:
             self.task.get_logger().report_media(
-                title, series, iteration, str(file), delete_after_upload=False
+                title, series, iteration, str(file), delete_after_upload=False,
             )
 
 
@@ -335,10 +333,10 @@ class CmlCache:
         # TODO load model cache
         self.models = {}
 
-    def _load_index():
+    def _load_index() -> None:
         """TODO"""
 
-    def _save_index():
+    def _save_index() -> None:
         """TODO"""
 
     def create_dataset(
@@ -349,7 +347,7 @@ class CmlCache:
         parents: Sequence[str | Dataset] | None = None,
     ):
         d = Dataset.create(
-            dataset_project=project, dataset_name=name, parent_datasets=parents
+            dataset_project=project, dataset_name=name, parent_datasets=parents,
         )
 
         # Track files

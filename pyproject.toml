@@ -17,4 +17,15 @@ package = true
 
 [dependency-groups]
 cml = ["clearml>=2.1.9"]
-dev = ["pytest>=9.1.1"]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.21",
+    "ty>=0.0.59",
+]
+
+
+[tool.ruff]
+line-length=120
+
+[tool.ruff.lint]
+select=["F","UP","B","ANN","SIM","NPY"]
