@@ -2,18 +2,18 @@ from pathlib import Path
 
 import pytest
 
-from lazydata.funcache import FunCache
+from lazydata.funcache import CacheExt, FunCache
 
 
-@pytest.mark.parametrize("mode",["json","pkl"])
-def test_simple_pkl(tmp_path: Path,mode) -> None:
+@pytest.mark.parametrize("mode", ["json", "pkl"])
+def test_simple_pkl(tmp_path: Path, mode: CacheExt) -> None:
 
     cache = FunCache(mode, tmp_path)
 
     _call_count = 0
 
-    @cache.cached()
-    def test_fun(x: int, y: int):
+    @cache.decorate(int)
+    def test_fun(x: int, y: int) -> int:
         nonlocal _call_count
         _call_count += 1
         return x + y

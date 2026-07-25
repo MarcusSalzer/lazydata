@@ -1,6 +1,6 @@
 """Text processing tools"""
 
-import regex as re
+import re
 
 
 def normalize_names(

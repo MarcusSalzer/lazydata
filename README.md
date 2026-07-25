@@ -1,6 +1,6 @@
 # Lazy data tools
 
-Here are a few utility functions that might be useful for something
+A collection of random trash for lazing around data.
 
 ## FunCache
 
