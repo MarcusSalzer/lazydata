@@ -1,26 +1,27 @@
 """Lets write a simple plot API from scratch... Famous last words..."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import NamedTuple, override
 
 
-class SplotElement:
+class SplotElement[C: (int, float)]:
     """A very general primitive, such as a line/point etc."""
 
 
-class SplotAx:
-    """A single context for plotting, contains one or more Elements.
+class SplotCoordSys2D[C: (int, float)]:
+    """Coordinate system, allows working with pixels, relative etc?"""
 
-    - This can operate in any dimensionality (e.g. 2D/3D/4D)
-    """
-
-    def __init__(self, ndim: int = 2) -> None:
-        self._ndim = ndim
+    def __init__(self, xrange: tuple[C, C], yrange: tuple[C, C]) -> None:
+        self.xrange = xrange
+        self.yrange = yrange
 
     @property
-    def ndim(self) -> int:
-        return self._ndim
+    def width(self) -> C:
+        return self.xrange[1] - self.xrange[0]
+
+    @property
+    def height(self) -> C:
+        return self.yrange[1] - self.yrange[0]
 
 
 class Point2d(NamedTuple):
@@ -47,22 +48,39 @@ class BBox2d:
         return Point2d(self.tl.x, self.br.y)
 
 
+class SplotAx[C: (int, float)]:
+    """A single context for plotting, contains one or more Elements.
+
+    - This can operate in any dimensionality (e.g. 2D/3D/4D)
+    """
+
+    def __init__(self, coords: SplotCoordSys2D[C]) -> None:
+        self._ndim = 2
+        self.coords = coords
+        self.elements: list[SplotElement[C]] = []
+
+    @property
+    def ndim(self) -> int:
+        return self._ndim
+
+
 class SplotLayout:
     """Defines how to organize SplotAx in a SplotCanvas.
 
     - This operates in 2D, even if its Axs can be any dim.
     """
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, axes: list[SplotAx]) -> None:
+        self.axes = axes
 
     def validate(self) -> None:
         """Check the contents before rendering."""
 
     @classmethod
-    def single(cls) -> "SplotLayout":
+    def single(cls, ax: SplotAx) -> "SplotLayout":
         """Make the simplest layout, with a single Ax"""
-        return cls()
+        # return cls([SplotAx(BBox2d(Point2d(0, 0), Point2d(1, 1)))])
+        return cls([ax])
 
 
 class SplotCanvas:

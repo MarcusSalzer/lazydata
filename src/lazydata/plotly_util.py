@@ -25,12 +25,11 @@ def set_plotly_template(
     if transparent_background:
         lay.paper_bgcolor = "rgba(0,0,0,0)"
         lay.plot_bgcolor = "rgba(0,0,0,0)"
-    pio.templates.default = 
 
 
 def heatmap(
     X: np.ndarray,
-    labels: list[str] = None,
+    labels: list[str]|None = None,
     log_scale=False,
     pseudo_count=1,
     size=400,
