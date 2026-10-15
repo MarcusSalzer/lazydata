@@ -27,7 +27,7 @@ def path_collapse_user(path: Path, home: Path | None = None):
         return path
 
 
-def tmp_path(ext: str):
+def tmp_path(ext: str) -> Path:
     """Temporary file with extension."""
     ext = ext.removeprefix(".")
 
@@ -35,7 +35,7 @@ def tmp_path(ext: str):
     return Path(f"/tmp/{now}.{ext}")
 
 
-def stem(p: Path | str):
+def stem(p: Path | str) -> str:
     """Lazy way to get the stem of a path (str)"""
     return Path(p).stem
 
