@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -33,18 +34,18 @@ def test_str_among_int() -> None:
     assert slap.one(str) == "whatsup"
 
 
-def named_number() -> None:
+def test_named_number() -> None:
     slap = SLAP(["action", "--retries", "3"])
 
     assert slap.named(int, "retries") == 3
 
 
-def named_number_equalssign() -> None:
+def test_named_number_equalssign() -> None:
     slap = SLAP(["action", "--retries=3"])
     assert slap.named(int, "retries") == 3
 
 
-def set_str() -> None:
+def test_set_str() -> None:
     slap = SLAP(["action", "--retries=3", "abra", "cadabra", "7", "33"])
     assert slap.set(str) == {"action", "abra", "cadabra"}
 
@@ -57,3 +58,36 @@ def test_only_a_path_existing(tmp_path: Path) -> None:
 
     assert slap.one(Path) == f
     assert slap.set(Path) == {f}
+
+
+def test_only_dir_non_exist(tmp_path: Path) -> None:
+    f = str(tmp_path / "mydir") + os.path.sep
+
+    print(f)
+    slap = SLAP([f])
+
+    assert slap.one(Path) == Path(f)
+    assert slap.set(Path) == {Path(f)}
+
+
+def test_only_file_non_exist(tmp_path: Path) -> None:
+    f = str(tmp_path / "hello.txt")
+
+    print(f)
+    slap = SLAP([f])
+
+    assert slap.one(Path) == Path(f)
+    assert slap.set(Path) == {Path(f)}
+
+
+def test_flag_only() -> None:
+    slap = SLAP(["-v"])
+
+    assert slap.flag("v") == True
+
+
+def test_flag_mixed() -> None:
+    slap = SLAP(["--count", "3", "-v", "--path", "hello/"])
+
+    assert slap.flag("v") == True
+    assert slap.flag("count") == False

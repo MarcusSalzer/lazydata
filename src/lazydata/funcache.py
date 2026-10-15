@@ -13,8 +13,6 @@ from pathlib import Path
 from types import FunctionType
 from typing import Any, Literal, SupportsBytes
 
-from sympy.utilities.misc import func_name
-
 # Callable object or def-function
 Func = Callable[..., Any] | FunctionType
 CacheFileExtension = Literal["json", "pkl"]

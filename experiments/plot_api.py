@@ -1,8 +1,8 @@
 """Pseudocode"""
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, NewType, TypeVarTuple
+from typing import Any, Literal, NewType, TypeVarTuple
 
 import numpy as np
 from matplotlib import pyplot as plt
