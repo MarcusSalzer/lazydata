@@ -2,6 +2,8 @@ import os
 import re
 import sys
 from pathlib import Path
+from types import UnionType
+from typing import Literal
 
 ArgTyp = str | int | Path
 
@@ -93,16 +95,17 @@ class SLAP:
 
     @property
     def one(self) -> One:
-        """Get a single un-named argument."""
+        """Get a single un-named argument.
+
+        Note: this is "callable property" rather than a method, which is slightly funky.
+        """
         return One(self._loose)
 
     def named[T: ArgTyp](self, t: type[T], name: str) -> T:
         """Get a single named argument."""
 
         v = self._named[name]
-        assert type_accepts(v, t), (
-            f"Oh no! '{name}' exists, but cannot be parsed as a {t}."
-        )
+        assert type_accepts(v, t), f"Oh no! '{name}' exists, but cannot be parsed as a {t}."
         return t(v)
 
     def set[T: ArgTyp](self, t: type[T]) -> set[T]:
@@ -113,3 +116,61 @@ class SLAP:
     def flag(self, name: str) -> bool:
         """A flag starts with `-` or `--`, but is not followed with a value."""
         return name in self._flags
+
+    def object[T](self, t: type[T], *, extra: Literal["forbid", "ignore"] = "forbid") -> T:
+        """Make an instance of a reasonable object."""
+
+        all_keys_in = set(self._named.keys()) | set(self._flags)
+
+        # Annot can be a type or a string like "int | None"
+        annots = t.__annotations__
+        print("ANNOTS:")
+        for name, atyp in annots.items():
+            print(f"  {name}: {repr(atyp)}")
+
+        extra_keys = all_keys_in.difference(annots.keys())
+        print(f"{extra_keys=}")
+        if extra == "forbid" and extra_keys:
+            raise ValueError(f"Oh no! we got some trash: {extra_keys}")
+
+        # We will provide keyword arguments to the user's class.
+        # We can only deal with types that can be constructed from strings.
+        kwargs: dict[str, ArgTyp | None] = {}
+
+        # Priority 1: named
+        for name, atyp in annots.items():
+            if not isinstance(atyp, type):
+                print(f"{name}:{atyp} is a {type(atyp)}, not a type!")
+                continue
+            if (v := self._named.get(name)) is not None:
+                print(f"  -> take {name} from named, parse as {atyp}")
+                # parse and store
+                kwargs[name] = atyp(v)
+
+        # Priority 2: boolean flags
+        for name, atyp in annots.items():
+            if atyp is bool:
+                print(f"  -> take {name} from bool flag")
+                kwargs[name] = name in self._flags
+
+        # Priority 3: try matching by type and count
+
+        for name in set(annots.keys()).difference(kwargs.keys()):
+            atyp = annots[name]
+            candidates = [x for x in self._loose if type_accepts(x, atyp)]
+            if len(candidates) == 1:
+                print(f"  -> take {name} from type, parse as {atyp}")
+                # parse and store
+                kwargs[name] = atyp(candidates[0])
+
+        # Fill missing optionals with None (Check if it has an explict default!)
+        # maybe we should inspect the __init__ signature rather than looking at annotations.
+        missing = set(annots.keys()).difference(kwargs.keys())
+        print(f" {missing=}")
+        for name in missing:
+            atyp = annots[name]
+            if isinstance(atyp, UnionType) and "None" in str(atyp):
+                print(f"  -> set {name} to None")
+                kwargs[name] = None
+
+        return t(**kwargs)

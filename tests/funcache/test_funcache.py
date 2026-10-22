@@ -11,7 +11,7 @@ def test_decorator_primitive(tmp_path: Path, mode: CacheFileExtension) -> None:
     """use the cache decorator on a simple function"""
     cache = FunCache(mode, tmp_path)
 
-    @cache.decorate()
+    @cache.decorated
     def test_fun(x: int, y: int) -> int:
         return x + y
 
@@ -44,7 +44,7 @@ def test_call_primitive(tmp_path: Path, mode: CacheFileExtension) -> None:
     assert cache.get_size() == 0
 
     # one arg, one kwarg
-    out = cache.call(test_fun, 3, y=4)
+    out = cache.call(test_fun)(3, y=4)
     reveal_type(out)
     assert out == 7
 
@@ -52,10 +52,10 @@ def test_call_primitive(tmp_path: Path, mode: CacheFileExtension) -> None:
     assert cs1 >= 0, "should store something"
 
     # two args
-    assert cache.call(test_fun, 3, 4) == 7
+    assert cache.call(test_fun)(3, 4) == 7
 
     assert cache.get_size() == cs1, "shouldnt grow on second call!"
 
     # new value
-    assert cache.call(test_fun, 4, 4) == 8
+    assert cache.call(test_fun)(4, 4) == 8
     assert cache.get_size() == 2 * cs1, "should store twice as much!"

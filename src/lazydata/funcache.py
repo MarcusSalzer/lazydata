@@ -26,7 +26,10 @@ def _func_name(fn: Func) -> str:
 
 
 def hash_value(value: object) -> str:
-    """Recursively hash any value to a stable string."""
+    """Recursively hash any value to a stable string.
+
+    NOTE: theres a big ugly if-statement. Could probably clean up.
+    """
     if is_dataclass(value) and not isinstance(value, type):
         # include the class name
         payload = {"__type__": type(value).__qualname__, **asdict(value)}
@@ -135,17 +138,30 @@ class FunCache:
         self,
         ext: CacheFileExtension = "pkl",
         cache_dir: str | Path = "./tmp/funcache",
+        *,
+        key_ignore: set[str] | str | None = None,
+        key_extra: object | None = None,
         write: bool = True,
         read: bool = True,
+        verbose: bool = False,
     ) -> None:
+
+        self.key_ignore = {key_ignore} if isinstance(key_ignore, str) else key_ignore
+        self.key_extra = key_extra
 
         self.write = write
         self.read = read
+        self.verbose = verbose
+
         # How do we store the data (and how flexible function outputs do we allow)?
         self.ext = ext
         # Where do we store the data.
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _log(self, msg: str) -> None:
+        if self.verbose:
+            print(msg)
 
     def get_size(self) -> int:
         cache_dir = Path(self.cache_dir)
@@ -181,22 +197,14 @@ class FunCache:
             with cache_file.open("r") as f:
                 return json.load(f)
 
-    def decorate[**P, R](
-        self,
-        key_ignore: set[str] | str | None = None,
-        key_extra: object | None = None,
-        verbose: bool = True,
-    ) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    @property
+    def decorated[**P, R](self) -> Callable[[Callable[P, R]], Callable[P, R]]:
         """Cache-decorator-factory."""
-
-        # standardize args
-        if isinstance(key_ignore, str):
-            key_ignore = {key_ignore}
 
         def decorator(fn: Callable[P, R]) -> Callable[P, R]:
             @wraps(fn)
             def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-                key = _make_cache_key(fn, args, kwargs, key_ignore, key_extra)
+                key = _make_cache_key(fn, args, kwargs, self.key_ignore, self.key_extra)
 
                 # a little more human readable
                 key = f"{_func_name(fn)}-{key}"
@@ -206,11 +214,9 @@ class FunCache:
 
                 desc = f"{_func_name(fn)} ({key[:8]}...)"
                 if self.read and cache_file.exists():
-                    if verbose:
-                        print(f"[cache hit]  {desc}")
+                    self._log(f"[cache hit]  {desc}")
                     return self._load(cache_file)
-                if verbose:
-                    print(f"[cache miss] {desc}")
+                self._log(f"[cache miss] {desc}")
 
                 result = fn(*args, **kwargs)
 
@@ -222,26 +228,24 @@ class FunCache:
 
         return decorator
 
-    def call[**P, R](
-        self,
-        fn: Callable[P, R],
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> R:
+    def call[**P, R](self, fn: Callable[P, R]) -> Callable[P, R]:
         """Idea: cache a function call without a decorator."""
 
-        key = _make_cache_key(fn, args, kwargs)
-        cache_file = self.cache_dir / f"{key}.{self.ext}"
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            key = _make_cache_key(fn, args, kwargs, self.key_ignore, self.key_extra)
+            cache_file = self.cache_dir / f"{key}.{self.ext}"
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-        desc = f"{_func_name(fn)} ({key[:8]}...)"
-        if self.read and cache_file.exists():
-            print(f"[cache hit]  {desc}")
-            return self._load(cache_file)
-        print(f"[cache miss] {desc}")
+            desc = f"{_func_name(fn)} ({key[:8]}...)"
+            if self.read and cache_file.exists():
+                self._log(f"[cache hit]  {desc}")
+                return self._load(cache_file)
+            self._log(f"[cache miss] {desc}")
 
-        result = fn(*args, **kwargs)
+            result = fn(*args, **kwargs)
 
-        self._store(key, result)
+            self._store(key, result)
 
-        return result
+            return result
+
+        return wrapper

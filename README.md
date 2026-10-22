@@ -6,14 +6,10 @@ A collection of random trash for lazing around data.
 
 Cache function calls, and invalidate when the source code changes.
 
-## benchmark
+## SLAP
 
-- SequentialTimer
+A super lazy argument parser
 
-## plotting
+## TableFormatter
 
-## tabular
-
-## text
-
-## stats
+Format dataframes into reasonable things

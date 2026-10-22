@@ -1,3 +1,5 @@
+from typing import NamedTuple, reveal_type
+
 from lazydata.slap import SLAP
 
 
@@ -14,4 +16,21 @@ def _main() -> None:
     print(f"{slap.one(int) = }")
 
 
-_main()
+def _slap_nt() -> None:
+    argv = ["hello", "--debug"]
+
+    print(f"\n{argv=}\n")
+    slap = SLAP(argv)
+
+    class C(NamedTuple):
+        name: str
+        last_name: str | None
+        age: int = 99
+        debug: bool = False
+
+    cfg = slap.object(C)
+    reveal_type(cfg)
+    print(cfg)
+
+
+_slap_nt()
