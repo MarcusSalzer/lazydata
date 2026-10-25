@@ -1,28 +1,13 @@
-"""TableFormatter — turn a Polars dataframe into publication-ready tables.
+"""TableFormatter: Render polars dataframes in a publication-ready format.
 
-Supports:
-  - Bold "best value" per column (higher-is-better or lower-is-better)
-  - Percentage formatting (multiply by 100, append %)
+Features:
+
+  - Bold "best value" per column
+  - Percentage formatting
   - Per-column decimal precision
-  - Markdown export
-  - LaTeX export
-  - HTML export
+  - Export: Markdown, LaTeX, HTML
 
-Quick example
--------------
-    fmt = TableFormatter(df)
-    fmt.percent("accuracy", "f1")
-    fmt.decimals(lr=6, accuracy=3, f1=3, loss=4)
-    fmt.best("accuracy", "f1", mode="high")
-    fmt.best("loss", mode="low")
-    fmt.rename(lr="LR", accuracy="Accuracy", f1="F1", loss="Loss")
-
-    print(fmt.to_markdown())
-    print(fmt.to_latex())
-    print(fmt.to_html())
 """
-
-from __future__ import annotations
 
 import math
 from typing import Any, Literal
@@ -55,21 +40,20 @@ class TableFormatter:
         self._decimals: dict[str, int] = {}
         self._best: dict[str, Literal["high", "low"]] = {}
         self._rename: dict[str, str] = {}
-        self._col_order: list[str] | None = None  # None = use df column order
         self._default_decimals = default_decimals
 
-    # ---------------------------------
-    # Configuration helpers (chainable)
-    # ---------------------------------
+    # === Configuration helpers (chainable) ===
 
-    def percent(self, *cols: str) -> TableFormatter:
+    def percent(self, *cols: str) -> "TableFormatter":
         """Mark columns to render as percentages (value * 100 + '%')."""
         self._percent_cols.update(cols)
         return self
 
     def decimals(
-        self, _default: int | None = None, **col_decimals: int,
-    ) -> TableFormatter:
+        self,
+        _default: int | None = None,
+        **col_decimals: int,
+    ) -> "TableFormatter":
         """Set decimal precision per column.  Pass keyword args as
             fmt.decimals(lr=6, loss=4, accuracy=3)
         or set a default for all unspecified numeric columns:
@@ -83,10 +67,8 @@ class TableFormatter:
         return self
 
     def best(
-        self,
-        *cols: str,
-        mode: Literal["high", "low"] = "high",
-    ) -> TableFormatter:
+        self, *cols: str, mode: Literal["high", "low"] = "high"
+    ) -> "TableFormatter":
         """Mark columns whose best value should be bolded.
 
         Parameters
@@ -99,19 +81,12 @@ class TableFormatter:
             self._best[col] = mode
         return self
 
-    def rename(self, **mapping: str) -> TableFormatter:
+    def rename(self, **mapping: str) -> "TableFormatter":
         """Rename columns in the output header only."""
         self._rename.update(mapping)
         return self
 
-    def columns(self, *cols: str) -> TableFormatter:
-        """Restrict and/or reorder output columns."""
-        self._col_order = list(cols)
-        return self
-
-    # ------
-    # Export
-    # ------
+    # === Export ===
 
     def to_markdown(self) -> str:
         return self._render("markdown")
@@ -121,13 +96,6 @@ class TableFormatter:
 
     def to_html(self) -> str:
         return self._render("html")
-
-    # ------------------
-    # Internal rendering
-    # ------------------
-
-    def _active_cols(self) -> list[str]:
-        return self._col_order if self._col_order is not None else self._df.columns
 
     def _best_row_index(self, col: str) -> int | None:
         """Return the row index of the best value for *col*, or None."""
@@ -173,7 +141,7 @@ class TableFormatter:
         return f"{fval:.{decimals}f}"
 
     def _render(self, fmt: Literal["markdown", "latex", "html"]) -> str:
-        cols = self._active_cols()
+        cols = self._df.columns
         bold_open, bold_close = _BOLD[fmt]
 
         # Pre-compute best row indices
@@ -201,9 +169,7 @@ class TableFormatter:
         return _build_html(headers, rows_out)
 
 
-# ------------------------
-# Format-specific builders
-# ------------------------
+# === Format-specific builders ===
 
 
 def _build_markdown(headers: list[str], rows: list[list[str]]) -> str:
