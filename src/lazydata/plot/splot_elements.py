@@ -19,6 +19,9 @@ class SplotColor:
     def __init__(self, r: float, g: float, b: float) -> None:
         self.rgb = (r, g, b)
 
+    def __str__(self) -> str:
+        return f"{type(self).__name__}({self.rgb})"
+
     # --- Presets ---
     @classmethod
     def white(cls) -> "SplotColor":

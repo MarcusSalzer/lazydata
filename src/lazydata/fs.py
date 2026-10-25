@@ -11,14 +11,15 @@ def user() -> str:
     return getpass.getuser()
 
 
-def path_collapse_user(path: Path, home: Path | None = None):
+def path_collapse_user(path: str | Path, home: str | Path | None = None) -> Path:
     """Do the opposite of path.expanduser(), for portability.
 
     Replaces the home directory prefix with '~', so paths like
     /home/user/projects/ become ~/projects/.
     """
-    if home is None:
-        home = Path.home()
+
+    path = Path(path)
+    home = Path.home() if home is None else Path(home)
     try:
         relative = path.relative_to(home)
         return Path("~") / relative
@@ -27,7 +28,7 @@ def path_collapse_user(path: Path, home: Path | None = None):
         return path
 
 
-def tmp_path(ext: str):
+def tmp_path(ext: str) -> Path:
     """Temporary file with extension."""
     ext = ext.removeprefix(".")
 
@@ -35,7 +36,7 @@ def tmp_path(ext: str):
     return Path(f"/tmp/{now}.{ext}")
 
 
-def stem(p: Path | str):
+def stem(p: Path | str) -> str:
     """Lazy way to get the stem of a path (str)"""
     return Path(p).stem
 
@@ -54,9 +55,5 @@ def sha256_path(path: Path) -> str:
     if path.is_file():
         return sha256_file(path)
 
-    file_hashes = sorted(
-        f"{sha256_file(f)}  {f.relative_to(path)}"
-        for f in sorted(path.rglob("*"))
-        if f.is_file()
-    )
+    file_hashes = sorted(f"{sha256_file(f)}  {f.relative_to(path)}" for f in sorted(path.rglob("*")) if f.is_file())
     return hashlib.sha256("\n".join(file_hashes).encode()).hexdigest()
