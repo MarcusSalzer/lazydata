@@ -25,39 +25,110 @@ def _func_name(fn: Func) -> str:
     return type(fn).__qualname__
 
 
-def hash_value(value: object) -> str:
+def hash_value_og(value: object) -> str:
     """Recursively hash any value to a stable string.
+
+    :param value:
+        Any object to compute the hash for
 
     NOTE: theres a big ugly if-statement. Could probably clean up.
     """
+
     if is_dataclass(value) and not isinstance(value, type):
         # include the class name
         payload = {"__type__": type(value).__qualname__, **asdict(value)}
-        return hash_value(payload)
+        return hash_value_og(payload)
     else:
         # recursive for iterables
         if isinstance(value, (list, tuple)):
-            inner = [hash_value(v) for v in value]
+            inner = [hash_value_og(v) for v in value]
         elif isinstance(value, dict):
-            inner = {k: hash_value(v) for k, v in value.items()}
+            inner = {k: hash_value_og(v) for k, v in value.items()}
         elif isinstance(value, set):
-            inner = [hash_value(v) for v in sorted([hash_value(v) for v in value])]
-        elif isinstance(value, (type, str, bool, float, int, Path)):
-            inner = repr(value)
+            inner = [hash_value_og(v) for v in sorted([hash_value_og(v) for v in value])]
         elif value is None:
             inner = "None"
         elif isinstance(value, SupportsBytes):
-            inner = hash_value(bytes(value))
+            inner = hash_value_og(bytes(value))
         elif hasattr(value, "__dict__"):
-            inner = {"type": type(value).__name__, "vars": hash_value(vars(value))}
+            inner = {"type": type(value).__name__, "vars": hash_value_og(vars(value))}
         else:
-            inner = str(value)  # Fallback
+            inner = repr(value)  # Fallback
 
         if not isinstance(inner, bytes):
             inner = json.dumps(inner).encode()
         return hashlib.md5(inner).hexdigest()
 
     raise TypeError(f"cannot reliably hash {type(value)}")
+
+
+def hash_value(obj: object, *, trace: list[str] | None = None) -> str:
+    """Recursively hash any value to a stable string.
+
+    :param value:
+        Any object to compute the hash for
+    :param trace:
+        Optionally collect a trace of 'how' the value is hashed.
+        Will append to the provided list.
+    """
+
+    def log(s: str) -> None:
+        if trace is not None:
+            trace.append(s)
+
+    # --- big old if statement ---
+
+    if isinstance(obj, str):
+        # Strings convert to bytes conveniently
+        data = obj.encode()
+        log("str")
+    #
+    #     elif isinstance(obj, SupportsBytes):
+    #         # If an object can be converted to bytes, expect that to
+    #         # be at least as reliable as repr.
+    #         data = bytes(obj)
+    #         log("bytes")
+
+    # === Standard Collections ===
+    elif isinstance(obj, list):
+        data = b"".join(hash_value(h, trace=trace)[0].encode() for h in obj)
+        log("list")
+    elif isinstance(obj, tuple):
+        data = b"".join(hash_value(h, trace=trace)[0].encode() for h in obj)
+        log("tuple")
+    elif isinstance(obj, set):
+        data = b"".join(hash_value(h, trace=trace)[0].encode() for h in sorted(obj))
+        log("set")
+    elif isinstance(obj, dict):
+        data = b"".join(
+            ((hash_value(k, trace=trace)[0]) + ":" + hash_value(v, trace=trace)[0]).encode() for k, v in obj.items()
+        )
+        log("dict")
+
+    # === Interesting Objects ===
+    elif is_dataclass(obj) and not isinstance(obj, type):
+        # dataclass instance can be converted to dict
+        data = hash_value(asdict(obj)).encode()
+        log("dataclass")
+
+    elif hasattr(obj, "__dict__"):
+        # An object that supports vars
+        # hopefully not circular recursive.
+        data = hash_value(vars(obj), trace=trace)[0].encode()
+        log("vars")
+
+    else:
+        # === Fallback: Can always get a string from repr (good for primitives) ===
+        data = repr(obj).encode()
+        log("repr")
+
+    # Also include the runtime type (so that things like "hello" and b"hello" are different)
+    data += type(obj).__name__.encode()
+
+    # Choose a hash function (e.g. md5, sha256 etc?)
+    h_str = hashlib.md5(data).hexdigest()
+
+    return h_str
 
 
 def _collect_source_hashes(fn: Func, _seen: set | None = None) -> list[str]:
@@ -72,10 +143,13 @@ def _collect_source_hashes(fn: Func, _seen: set | None = None) -> list[str]:
     try:
         source = textwrap.dedent(inspect.getsource(fn))
         tree = ast.parse(source)
+
     except (OSError, TypeError):
-        # builtins, C extensions, lambdas — not inspectable
+        # builtins, C extensions, lambdas not inspectable
+        # Fallback to repr
         return [hashlib.md5(repr(fn).encode()).hexdigest()]
 
+    # Hash the whole tree as a string
     hashes = [hashlib.md5(ast.dump(tree).encode()).hexdigest()]
 
     # find all names called in this function
@@ -83,19 +157,22 @@ def _collect_source_hashes(fn: Func, _seen: set | None = None) -> list[str]:
     called_names |= {
         node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load)
     }
-    if isinstance(fn, FunctionType):
-        for name in called_names:
+
+    # Also include all called function names
+    for name in called_names:
+        if isinstance(fn, FunctionType):
             obj = fn.__globals__.get(name)
             if callable(obj) and inspect.isfunction(obj):
                 hashes.extend(_collect_source_hashes(obj, _seen))
-
     return hashes
 
 
 def hash_function(fn: Func) -> str:
     """Produce a hash based on the code of a function/callable."""
     all_hashes = _collect_source_hashes(fn)
-    combined = "|".join(sorted(all_hashes))  # sorted for stability
+    # sorted for stability
+    # Order of called functions should be encoded in the tree anyway
+    combined = "|".join(sorted(all_hashes))
     return hashlib.md5(combined.encode()).hexdigest()
 
 
@@ -124,7 +201,7 @@ def _make_cache_key(
     # maybe add some arguments
     args = [args_map, key_extra] if key_extra else args_map
 
-    arg_hash = hash_value(args)
+    arg_hash = hash_value(args, trace=None)
     fn_hash = hash_function(fn)
 
     combined = f"{fn_hash}:{arg_hash}"

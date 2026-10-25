@@ -18,7 +18,6 @@ def test_decorator_primitive(tmp_path: Path, mode: CacheFileExtension) -> None:
     assert cache.get_size() == 0
 
     out = test_fun(3, 4)
-    reveal_type(out)
     assert out == 7
 
     cs1 = cache.get_size()
@@ -45,7 +44,6 @@ def test_call_primitive(tmp_path: Path, mode: CacheFileExtension) -> None:
 
     # one arg, one kwarg
     out = cache.call(test_fun)(3, y=4)
-    reveal_type(out)
     assert out == 7
 
     cs1 = cache.get_size()
