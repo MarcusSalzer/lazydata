@@ -1,3 +1,4 @@
+import inspect
 from typing import NamedTuple, reveal_type
 
 from lazydata.slap import SLAP
@@ -33,4 +34,18 @@ def _slap_nt() -> None:
     print(cfg)
 
 
-_slap_nt()
+def _signature() -> None:
+
+    class C(NamedTuple):
+        name: str
+        last_name: str | None
+        age: int = 99
+        debug: bool = False
+
+    sig = inspect.signature(C)
+    print(sig)
+    for name, param in sig.parameters.items():
+        print("  ", name, param.annotation, type(param.annotation))
+
+
+_signature()

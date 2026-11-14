@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -58,6 +59,16 @@ def test_only_a_path_existing(tmp_path: Path) -> None:
 
     assert slap.one(Path) == f
     assert slap.set(Path) == {f}
+
+
+def test_only_timedelta_explicit_single() -> None:
+    assert SLAP(["12s"]).one(timedelta) == timedelta(seconds=12)
+    assert SLAP(["2m"]).one(timedelta) == timedelta(minutes=2)
+    assert SLAP(["2h"]).one(timedelta) == timedelta(hours=2)
+
+
+def test_only_timedelta_explicit_combo() -> None:
+    assert SLAP(["1h2m13s"]).one(timedelta) == timedelta(hours=1, minutes=2, seconds=13)
 
 
 def test_only_dir_non_exist(tmp_path: Path) -> None:
